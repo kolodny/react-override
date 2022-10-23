@@ -17,25 +17,26 @@ export interface Override<T> {
    * Create an extractor component.
    * This allows you to "pull out" the override value to manipulate during a test.
    * For example:
-   *     const extractor = ApiOverride.createExtractor();
-   *     const { rendered } = render(<extractor.Element children={<Thing />} />);
+   *     const apiRef = ApiOverride.createRef();
+   *     const { rendered } = render(<apiRef.Override children={<Thing />} />);
    *
    *     rendered.getByText('load more').click();
    *     expect(rendered).toHaveMoreElements();
-   *     const loadMore = extractor.value.loadMore;
-   *     extractor.value.loadMore = () => { throw new Error('no network'); };
+   *     const loadMore = apiRef.value.loadMore;
+   *     apiRef.value.loadMore = () => { throw new Error('no network'); };
    *     rendered.getByText('load more').click();
    *     expect(rendered).toError();
-   *     extractor.value.loadMore = loadMore;
+   *     apiRef.value.loadMore = loadMore;
    *     rendered.getByText('load more').click();
    *     expect(rendered).toHaveMoreElements();
    */
-  createExtractor: () => {
-    Element: React.FC<{
+  createRef: () => {
+    Override: React.FC<{
       with?: (t: T) => T;
       children: React.ReactNode;
     }>;
-    extracted: T;
+    /** Gets the currently mounted value of the override. Throws if the element is not rendered. */
+    current: T;
   };
 }
 
@@ -50,21 +51,33 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
         <Context.Provider value={newValue}>{props.children}</Context.Provider>
       );
     },
-    createExtractor: () => {
-      let extracted!: T;
+    createRef: () => {
+      let unmounted = true;
+      let current: T;
       return {
-        Element: (props) => (
-          <Override.Override
-            with={(value) => {
-              extracted = props.with ? props.with(value) : value;
-              return extracted;
-            }}
-          >
-            {props.children}
-          </Override.Override>
-        ),
-        get extracted() {
-          return extracted;
+        Override: (props) => {
+          React.useEffect(() => {
+            unmounted = false;
+            return () => void (unmounted = true);
+          }, []);
+          return (
+            <Override.Override
+              with={(value) => {
+                current = props.with ? props.with(value) : value;
+                return current;
+              }}
+            >
+              {props.children}
+            </Override.Override>
+          );
+        },
+        get current() {
+          if (unmounted) {
+            throw new Error(
+              'Attempted to get current value when Element is not rendered'
+            );
+          }
+          return current;
         },
       };
     },

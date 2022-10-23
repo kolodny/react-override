@@ -99,15 +99,15 @@ test('Nested overrides', async () => {
   await myWaitFor(() => expect(getByText('LUKE SKYGUY!!')).toBeInTheDocument());
 });
 
-test('extractor', async () => {
-  const extractor = SwapiOverride.createExtractor();
+test('createRef', async () => {
+  const swapiRef = SwapiOverride.createRef();
   const { getByText } = render(
-    <extractor.Element>
+    <swapiRef.Override>
       <App />
-    </extractor.Element>
+    </swapiRef.Override>
   );
-  const getPerson = extractor.extracted.getPerson;
-  extractor.extracted.getPerson = async (id) => {
+  const getPerson = swapiRef.current.getPerson;
+  swapiRef.current.getPerson = async (id) => {
     if (id === '1') {
       return {
         name: 'Luke Loaded',
