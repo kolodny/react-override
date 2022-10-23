@@ -1,20 +1,20 @@
-import React from "react";
-import { render, waitFor } from "@testing-library/react";
-import App from "./App";
-import { Film, Person, SwapiOverride } from "./swapi";
+import React from 'react';
+import { render, waitFor } from '@testing-library/react';
+import App from './App';
+import { Film, Person, SwapiOverride } from './swapi';
 
 // @testing-library/react is weird about many things updating and fails too early.
 const myWaitFor = (cb: () => void) => {
   return waitFor(cb, { timeout: 2000 });
 };
 
-test("using the regular api with no errors", async () => {
+test('using the regular api with no errors', async () => {
   const { getByText } = render(<App />);
-  await myWaitFor(() => expect(getByText("Films:")).toBeInTheDocument());
-  await myWaitFor(() => expect(getByText("People:")).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('Films:')).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('People:')).toBeInTheDocument());
 });
 
-test("using the regular api with people errors", async () => {
+test('using the regular api with people errors', async () => {
   const { getByText } = render(
     <SwapiOverride.Override
       with={(swapi) => {
@@ -28,12 +28,12 @@ test("using the regular api with people errors", async () => {
     </SwapiOverride.Override>
   );
   await myWaitFor(() =>
-    expect(getByText("Error loading people")).toBeInTheDocument()
+    expect(getByText('Error loading people')).toBeInTheDocument()
   );
-  await myWaitFor(() => expect(getByText("Films:")).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('Films:')).toBeInTheDocument());
 });
 
-test("using the overide api with no errors", async () => {
+test('using the overide api with no errors', async () => {
   const { getByText } = render(
     <SwapiOverride.Override
       with={(swapi) => {
@@ -41,14 +41,14 @@ test("using the overide api with no errors", async () => {
           ...swapi,
           getFilms: async () => [
             {
-              title: "Some title",
-              url: "1",
+              title: 'Some title',
+              url: '1',
             } as Film,
           ],
           getPeople: async () => [
             {
-              name: "Luke Skyguy",
-              url: "1",
+              name: 'Luke Skyguy',
+              url: '1',
             } as Person,
           ],
         };
@@ -57,11 +57,11 @@ test("using the overide api with no errors", async () => {
       <App />
     </SwapiOverride.Override>
   );
-  await myWaitFor(() => expect(getByText("Films:")).toBeInTheDocument());
-  await myWaitFor(() => expect(getByText("Luke Skyguy")).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('Films:')).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('Luke Skyguy')).toBeInTheDocument());
 });
 
-test("Nested overrides", async () => {
+test('Nested overrides', async () => {
   const { getByText } = render(
     // LEVEL 1
     <SwapiOverride.Override
@@ -71,8 +71,8 @@ test("Nested overrides", async () => {
           getFilms: async () => [],
           getPeople: async () => [
             {
-              name: "Luke Skyguy",
-              url: "1",
+              name: 'Luke Skyguy',
+              url: '1',
             } as Person,
           ],
         };
@@ -95,6 +95,29 @@ test("Nested overrides", async () => {
       </SwapiOverride.Override>
     </SwapiOverride.Override>
   );
-  await myWaitFor(() => expect(getByText("Films:")).toBeInTheDocument());
-  await myWaitFor(() => expect(getByText("LUKE SKYGUY!!")).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('Films:')).toBeInTheDocument());
+  await myWaitFor(() => expect(getByText('LUKE SKYGUY!!')).toBeInTheDocument());
+});
+
+test('extractor', async () => {
+  const extractor = SwapiOverride.createExtractor();
+  const { getByText } = render(
+    <extractor.Element>
+      <App />
+    </extractor.Element>
+  );
+  const getPerson = extractor.extracted.getPerson;
+  extractor.extracted.getPerson = async (id) => {
+    if (id === '1') {
+      return {
+        name: 'Luke Loaded',
+        planet: 'Tatooine Loaded',
+      };
+    }
+    return getPerson(id);
+  };
+  getByText('Click to load person').click();
+  await myWaitFor(() =>
+    expect(getByText('Luke Loaded', { exact: false })).toBeInTheDocument()
+  );
 });
