@@ -1,5 +1,9 @@
 import React from 'react';
 
+export const isInNode =
+  typeof process === 'object' &&
+  Object.prototype.toString.call(process).slice(8, -1) === 'process';
+
 export interface Override<T> {
   /** Hook to get the current value of the overridable value. */
   useValue: () => T;
@@ -17,6 +21,7 @@ export interface Override<T> {
    * Create an extractor component.
    * This allows you to "pull out" the override value to manipulate during a test.
    * For example:
+   *
    *     const apiRef = ApiOverride.createRef();
    *     const { rendered } = render(<apiRef.Override children={<Thing />} />);
    *
@@ -72,7 +77,7 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
           );
         },
         get current() {
-          if (unmounted) {
+          if (unmounted && !isInNode) {
             throw new Error(
               'Attempted to get current value when Element is not rendered'
             );
