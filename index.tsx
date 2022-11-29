@@ -47,6 +47,7 @@ export interface Override<T> {
   };
 }
 
+const NO_VALUE = Symbol('NO_VALUE');
 export const createOverride = <T,>(defaultValue: T): Override<T> => {
   const Context = React.createContext(defaultValue);
   const Override: Override<T> = {
@@ -60,9 +61,10 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
     },
     createRef: () => {
       let unmounted = true;
-      let current: T;
+      let current: T = NO_VALUE as never as T;
       let forceUpdater: (v: any) => void;
       let resolver: undefined | (() => void);
+
       return {
         Override: (props) => {
           const [, force] = React.useState({});
@@ -90,10 +92,14 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
               }
             });
           };
+
           return (
             <Override.Override
               with={(value) => {
-                current = props.with ? props.with(value) : value;
+                if ((current as any) === NO_VALUE) {
+                  current = props.with ? props.with(value) : value;
+                  console.log('current changed');
+                }
                 return current;
               }}
             >
@@ -107,7 +113,9 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
               'Attempted to get current value when Element is not rendered'
             );
           }
-          return current;
+          return (current as any) === NO_VALUE
+            ? (undefined as never as T)
+            : current;
         },
         forceUpdate: () => {
           if (unmounted) {
