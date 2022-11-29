@@ -42,6 +42,8 @@ export interface Override<T> {
     }>;
     /** Gets the currently mounted value of the override. Throws if the element is not rendered. */
     current: T;
+    /** Forces the component to update. Useful when you changed the return value of a function or spy */
+    forceUpdate: () => Promise<void>;
   };
 }
 
@@ -59,12 +61,35 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
     createRef: () => {
       let unmounted = true;
       let current: T;
+      let forceUpdater: (v: any) => void;
+      let resolver: undefined | (() => void);
       return {
         Override: (props) => {
+          const [, force] = React.useState({});
           React.useEffect(() => {
+            resolver?.();
+            resolver = undefined;
+          });
+          React.useEffect(() => {
+            forceUpdater = force;
             unmounted = false;
             return () => void (unmounted = true);
           }, []);
+
+          // This function allows us to force the entire component tree to update.
+          const recursiveClone = (
+            children: React.ReactNode
+          ): React.ReactNode => {
+            return React.Children.map(children, (child) => {
+              if (React.isValidElement<any>(child)) {
+                return React.cloneElement(child, {
+                  children: recursiveClone(child.props.children),
+                });
+              } else {
+                return child;
+              }
+            });
+          };
           return (
             <Override.Override
               with={(value) => {
@@ -72,7 +97,7 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
                 return current;
               }}
             >
-              {props.children}
+              {recursiveClone(props.children)}
             </Override.Override>
           );
         },
@@ -83,6 +108,17 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
             );
           }
           return current;
+        },
+        forceUpdate: () => {
+          if (unmounted) {
+            throw new Error(
+              'Attempted to force update when Element is not rendered'
+            );
+          }
+          return new Promise<void>((resolve) => {
+            resolver = resolve;
+            forceUpdater({});
+          });
         },
       };
     },

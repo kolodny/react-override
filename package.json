@@ -1,6 +1,6 @@
 {
   "name": "react-override",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Override object based on previous value",
   "main": "index.js",
   "scripts": {

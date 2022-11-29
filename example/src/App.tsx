@@ -1,7 +1,7 @@
-import React from "react";
-import { PeopleList } from "./PeopleList";
-import { Films } from "./Films";
-import { LoadablePerson } from "./LoadablePerson";
+import React from 'react';
+import { PeopleList } from './PeopleList';
+import { Films } from './Films';
+import { LoadablePerson } from './LoadablePerson';
 
 function App() {
   return (
