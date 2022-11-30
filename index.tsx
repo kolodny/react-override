@@ -98,7 +98,6 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
               with={(value) => {
                 if ((current as any) === NO_VALUE) {
                   current = props.with ? props.with(value) : value;
-                  console.log('current changed');
                 }
                 return current;
               }}
