@@ -6,7 +6,7 @@ import { createOverride } from 'react-override';
 
 // @testing-library/react is weird about many things updating and fails too early.
 const myWaitFor = (cb: () => void) => {
-  return waitFor(cb, { timeout: 2000 });
+  return waitFor(cb, { timeout: 1000 });
 };
 
 test('using the regular api with no errors', async () => {
