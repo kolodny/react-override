@@ -47,74 +47,66 @@ export interface Override<T> {
   };
 }
 
-const NO_VALUE = Symbol('NO_VALUE');
 export const createOverride = <T,>(defaultValue: T): Override<T> => {
-  const Context = React.createContext(defaultValue);
+  const Context = React.createContext({
+    value: defaultValue,
+    version: 0,
+  });
   const Override: Override<T> = {
-    useValue: () => React.useContext(Context),
+    useValue: () => React.useContext(Context).value,
     Override: (props) => {
       const oldValue = React.useContext(Context);
-      const newValue = props.with(oldValue);
+      const newValue = {
+        value: props.with(oldValue.value),
+        version: oldValue.version + 1,
+      };
       return (
         <Context.Provider value={newValue}>{props.children}</Context.Provider>
       );
     },
     createRef: () => {
       let unmounted = true;
-      let current: T = NO_VALUE as never as T;
-      let forceUpdater: (v: any) => void;
+      let ref: { current: T } | undefined = undefined;
+      let incrementVersion: () => void;
       let resolver: undefined | (() => void);
 
       return {
         Override: (props) => {
-          const [, force] = React.useState({});
           React.useEffect(() => {
             resolver?.();
             resolver = undefined;
           });
           React.useEffect(() => {
-            forceUpdater = force;
+            incrementVersion = () => setVersion((t) => t + 1);
             unmounted = false;
             return () => void (unmounted = true);
           }, []);
 
-          // This function allows us to force the entire component tree to update.
-          const recursiveClone = (
-            children: React.ReactNode
-          ): React.ReactNode => {
-            return React.Children.map(children, (child) => {
-              if (React.isValidElement<any>(child)) {
-                return React.cloneElement(child, {
-                  children: recursiveClone(child.props.children),
-                });
-              } else {
-                return child;
-              }
-            });
+          const oldValue = React.useContext(Context);
+          if (!ref) {
+            ref = {
+              current: props.with ? props.with(oldValue.value) : oldValue.value,
+            };
+          }
+          const [version, setVersion] = React.useState(oldValue.version + 1);
+          const newValue = {
+            value: ref.current,
+            version: version + 1,
           };
 
           return (
-            <Override.Override
-              with={(value) => {
-                if ((current as any) === NO_VALUE) {
-                  current = props.with ? props.with(value) : value;
-                }
-                return current;
-              }}
-            >
-              {recursiveClone(props.children)}
-            </Override.Override>
+            <Context.Provider value={newValue}>
+              {props.children}
+            </Context.Provider>
           );
         },
         get current() {
           if (unmounted && !isInNode) {
-            throw new Error(
+            console.error(
               'Attempted to get current value when Element is not rendered'
             );
           }
-          return (current as any) === NO_VALUE
-            ? (undefined as never as T)
-            : current;
+          return ref?.current!;
         },
         forceUpdate: () => {
           if (unmounted) {
@@ -124,7 +116,7 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
           }
           return new Promise<void>((resolve) => {
             resolver = resolve;
-            forceUpdater({});
+            incrementVersion();
           });
         },
       };
