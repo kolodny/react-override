@@ -4,9 +4,11 @@ import App from './App';
 import { Film, Person, SwapiOverride } from './swapi';
 import { createOverride } from 'react-override';
 
+jest.setTimeout(40000);
+
 // @testing-library/react is weird about many things updating and fails too early.
 const myWaitFor = (cb: () => void) => {
-  return waitFor(cb, { timeout: 1000 });
+  return waitFor(cb, { timeout: 2000 });
 };
 
 test('using the regular api with no errors', async () => {
