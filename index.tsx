@@ -1,9 +1,5 @@
 import React from 'react';
 
-export const isInNode =
-  typeof process === 'object' &&
-  Object.prototype.toString.call(process).slice(8, -1) === 'process';
-
 export interface Override<T> {
   /** Hook to get the current value of the overridable value. */
   useValue: () => T;
@@ -42,6 +38,8 @@ export interface Override<T> {
     }>;
     /** Gets the currently mounted value of the override. Throws if the element is not rendered. */
     current: T;
+    /** Waits for the element to render, will timeout with a rejection after `timeoutMs` if provided. */
+    waitForRender: (timeoutMs?: number) => Promise<void>;
     /** Forces the component to update. Useful when you changed the return value of a function or spy */
     forceUpdate: () => Promise<void>;
   };
@@ -69,12 +67,19 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
       let ref: { current: T } | undefined = undefined;
       let incrementVersion: () => void;
       let resolver: undefined | (() => void);
+      let initialRenderDeferred: any = {};
+      initialRenderDeferred.promise = new Promise((resolve, reject) => {
+        initialRenderDeferred.resolve = resolve;
+        initialRenderDeferred.reject = reject;
+      });
 
       return {
         Override: (props) => {
           React.useEffect(() => {
             resolver?.();
             resolver = undefined;
+            initialRenderDeferred?.resolve();
+            initialRenderDeferred = undefined;
           });
           React.useEffect(() => {
             incrementVersion = () => setVersion((t) => t + 1);
@@ -100,10 +105,24 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
             </Context.Provider>
           );
         },
+        waitForRender: async (timeout?: number) => {
+          if (!initialRenderDeferred?.promise) return;
+          if (!timeout) return initialRenderDeferred.promise;
+          return Promise.race([
+            initialRenderDeferred.promise,
+            new Promise((_, reject) =>
+              setTimeout(
+                () => reject(new Error('waitForRender timed out')),
+                timeout
+              )
+            ),
+          ]);
+        },
+
         get current() {
-          if (unmounted && !isInNode) {
+          if (unmounted) {
             console.error(
-              'Attempted to get current value when Element is not rendered'
+              'Attempted to get current value when Element is not rendered. Do you forget to `waitForRender()`?'
             );
           }
           return ref?.current!;

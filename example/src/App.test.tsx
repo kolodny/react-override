@@ -6,9 +6,8 @@ import { createOverride } from 'react-override';
 
 jest.setTimeout(40000);
 
-// @testing-library/react is weird about many things updating and fails too early.
 const myWaitFor = (cb: () => void) => {
-  return waitFor(cb, { timeout: 5000 });
+  return waitFor(cb, { timeout: 30000 });
 };
 
 test('using the regular api with no errors', async () => {
@@ -36,7 +35,7 @@ test('using the regular api with people errors', async () => {
   await myWaitFor(() => expect(getByText('Films:')).toBeInTheDocument());
 });
 
-test('using the overide api with no errors', async () => {
+test('using the override api with no errors', async () => {
   const { getByText } = render(
     <SwapiOverride.Override
       with={(swapi) => {
@@ -166,4 +165,38 @@ test('forceUpdate', async () => {
   getByText('Inc').click();
   expect(called).toBe(true);
   expect(getByText('101')).toBeInTheDocument();
+});
+
+test('waitForRender', async () => {
+  const info = createOverride({ foo: 123 });
+  const Info = info.createRef();
+  const Host: React.FunctionComponent = (props) => {
+    const [show, setShow] = React.useState(false);
+    React.useEffect(() => {
+      setTimeout(() => {
+        setShow(true);
+      }, 1000);
+    }, []);
+    return <>{show ? props.children : 'Loading...'}</>;
+  };
+  const Component: React.FunctionComponent = () => {
+    const { foo } = info.useValue();
+    return <>Foo is {foo}</>;
+  };
+  const { queryByText } = render(
+    <Host>
+      <Info.Override with={() => ({ foo: 321 })}>
+        My Cool Component
+        <span>
+          <Component />
+        </span>
+      </Info.Override>
+    </Host>
+  );
+
+  expect(queryByText('Loading...')).toBeInTheDocument();
+  expect(queryByText('0')).not.toBeInTheDocument();
+  await act(() => Info.waitForRender());
+  expect(queryByText('Loading...')).not.toBeInTheDocument();
+  expect(queryByText('Foo is 321')).toBeInTheDocument();
 });
