@@ -1,5 +1,11 @@
 import React from 'react';
 
+type FC<T = unknown> = React.FunctionComponent<
+  T & {
+    children: React.ReactNode;
+  }
+>;
+
 export interface Override<T> {
   /** Hook to get the current value of the overridable value. */
   useValue: () => T;
@@ -9,7 +15,7 @@ export interface Override<T> {
    * `with` prop gets passed the existing value so you can delegate to
    * the existing value as needed.
    */
-  Override: React.FunctionComponent<{
+  Override: FC<{
     with: (t: T) => T;
     children: React.ReactNode;
   }>;
@@ -31,7 +37,7 @@ export interface Override<T> {
    *     rendered.getByText('load more').click();
    *     expect(rendered).toHaveMoreElements();
    */
-  createRef: (withValue?: (t: T) => T) => React.FunctionComponent & {
+  createRef: (withValue?: (t: T) => T) => FC & {
     /** Gets the currently mounted value of the override. */
     current: T;
     /** Waits for the element to render, will timeout with a rejection after `timeoutMs` if provided. */
@@ -68,8 +74,6 @@ export const createOverride = <T,>(defaultValue: T): Override<T> => {
         initialRenderDeferred.resolve = resolve;
         initialRenderDeferred.reject = reject;
       });
-
-      const foo: ReturnType<Override<T>['createRef']> = {} as any;
 
       const Provider: ReturnType<Override<T>['createRef']> = ((props: any) => {
         React.useEffect(() => {
