@@ -102,14 +102,14 @@ test('Nested overrides', async () => {
 });
 
 test('createRef', async () => {
-  const swapiRef = SwapiOverride.createRef();
+  const SwapiRef = SwapiOverride.createRef(a => a);
   const { getByText } = render(
-    <swapiRef.Override>
+    <SwapiRef>
       <App />
-    </swapiRef.Override>
+    </SwapiRef>
   );
-  const getPerson = swapiRef.current.getPerson;
-  swapiRef.current.getPerson = async (id) => {
+  const getPerson = SwapiRef.current.getPerson;
+  SwapiRef.current.getPerson = async (id) => {
     if (id === '1') {
       return {
         name: 'Luke Loaded',
@@ -139,12 +139,12 @@ test('forceUpdate', async () => {
     );
   };
   const { getByText } = render(
-    <UseState.Override>
+    <UseState>
       My Cool Component
       <span>
         <Component />
       </span>
-    </UseState.Override>
+    </UseState>
   );
 
   expect(getByText('0')).toBeInTheDocument();
@@ -169,7 +169,7 @@ test('forceUpdate', async () => {
 
 test('waitForRender', async () => {
   const info = createOverride({ foo: 123 });
-  const Info = info.createRef();
+  const Info = info.createRef(() => ({ foo: 321 }));
   const Host: React.FunctionComponent = (props) => {
     const [show, setShow] = React.useState(false);
     React.useEffect(() => {
@@ -185,12 +185,12 @@ test('waitForRender', async () => {
   };
   const { queryByText } = render(
     <Host>
-      <Info.Override with={() => ({ foo: 321 })}>
+      <Info>
         My Cool Component
         <span>
           <Component />
         </span>
-      </Info.Override>
+      </Info>
     </Host>
   );
 

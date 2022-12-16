@@ -34,7 +34,7 @@ function App() {
 }
 
 function App2 () {
-  return <UseState.Override><App /></UseState.Override>
+  return <UseState><App /></UseState>
 }
 
 export default App2;
