@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "test:example": "cd example && npm test -- --watchAll=false",
+    "test:example": "cd example && npm test",
     "test": "npm run build && npm run test:example"
   },
   "keywords": [],
