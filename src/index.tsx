@@ -1,10 +1,6 @@
 import React from 'react';
 
-type FC<T = unknown> = React.FunctionComponent<
-  T & {
-    children: React.ReactNode;
-  }
->;
+type PropsWithChildren<P = unknown> = P & { children?: React.ReactNode };
 
 export interface Override<T> {
   /** Hook to get the current value of the overridable value. */
@@ -15,10 +11,9 @@ export interface Override<T> {
    * `with` prop gets passed the existing value so you can delegate to
    * the existing value as needed.
    */
-  Override: FC<{
-    with: (t: T) => T;
-    children: React.ReactNode;
-  }>;
+  Override: React.FC<PropsWithChildren<{ with: (old: T) => T }>>;
+  /** Bind override value late. Use this when you need to declare your overrides in a separate file due to import limitations. */
+  bind: (callback: (value: T) => T) => void;
   /**
    * Create an extractor component.
    * This allows you to "pull out" the override value to manipulate during a test.
@@ -37,7 +32,7 @@ export interface Override<T> {
    *     rendered.getByText('load more').click();
    *     expect(rendered).toHaveMoreElements();
    */
-  createRef: (withValue?: (t: T) => T) => FC & {
+  createRef: (withValue?: (t: T) => T) => React.FC<PropsWithChildren> & {
     /** Gets the currently mounted value of the override. */
     current: T;
     /** Waits for the element to render, will timeout with a rejection after `timeoutMs` if provided. */
@@ -50,22 +45,36 @@ export interface Override<T> {
 export const configureCreateOverride =
   (warnOnUnmountedCurrent = true) =>
   <T,>(defaultValue: T): Override<T> => {
+    const bounds: Array<(value: T) => T> = [];
     const Context = React.createContext({
       value: defaultValue,
       version: 0,
     });
+    const useValue = () => {
+      const context = { ...React.useContext(Context) };
+
+      if (context.version === 0) {
+        for (const bound of bounds) {
+          context.value = bound(context.value);
+          context.version++;
+        }
+      }
+      return context;
+    };
     const Override: Override<T> = {
-      useValue: () => React.useContext(Context).value,
+      useValue: () => useValue().value,
       Override: (props) => {
-        const oldValue = React.useContext(Context);
+        const old = useValue();
+        let value = old.value;
         const newValue = {
-          value: props.with(oldValue.value),
-          version: oldValue.version + 1,
+          value: props.with(value),
+          version: old.version + 1,
         };
         return (
           <Context.Provider value={newValue}>{props.children}</Context.Provider>
         );
       },
+      bind: (callback) => bounds.push(callback),
       createRef: (withValue) => {
         let unmounted = true;
         let ref: { current: T } | undefined = undefined;
